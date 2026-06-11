@@ -1,0 +1,6 @@
+# "✎ 편집" 버튼이 .md 파일을 열 편집기.
+# 주석(#)이 아닌 첫 줄의 실행파일을 사용합니다. 없으면 메모장(notepad.exe).
+# 예시:
+#   C:\Program Files\Notepad++\notepad++.exe
+#   %LOCALAPPDATA%\Programs\Microsoft VS Code\Code.exe
+notepad.exe

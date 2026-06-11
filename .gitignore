@@ -1,0 +1,23 @@
+# build outputs (compiled by build.ps1 / PyInstaller — not committed)
+*.exe
+_pybuild/
+_share/
+dist/
+build/
+*.spec
+
+# distributables (attach to Releases instead)
+*.zip
+
+# python
+__pycache__/
+*.pyc
+
+# scratch / temp
+_*.html
+_*.log
+_probe.*
+
+# OS
+.DS_Store
+Thumbs.db
