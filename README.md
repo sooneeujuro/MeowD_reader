@@ -83,20 +83,15 @@ mac/setup_mac.command           macOS 셋업
 universal/md-viewer.html        설치 없는 1파일 뷰어 (+ marked.min.js)
 ```
 
-## ✏️ 시작은 이 손그림에서
-
-<div align="center">
-
-<img src="assets/sketch.png" width="140" alt="원본 손그림 스케치"> &nbsp;&nbsp;➜&nbsp;&nbsp; <img src="assets/logo.png" width="150" alt="다듬은 로고">
-
-<sub><b>M = 귀, D = 얼굴</b> 🐱 — <a href="https://github.com/sooneeujuro">@sooneeujuro</a>의 손그림 아이디어에서 출발했어요.</sub>
-
-</div>
-
 ## 라이선스 / 크레딧
 
 - 코드: [MIT](LICENSE)
 - 번들 라이브러리: [marked](https://github.com/markedjs/marked) (MIT) · [Pygments](https://pygments.org) (BSD) · [Python-Markdown](https://python-markdown.github.io) (BSD)
-- 로고: [@sooneeujuro](https://github.com/sooneeujuro)의 손그림 스케치 기반 (위 참고) — 컨셉/디자인 직접
 
-<div align="center"><sub>made with 🐱 for quick markdown peeking</sub></div>
+<div align="center">
+
+<img src="assets/sketch.png" width="56" alt="">
+
+<sub>made with 🐱 · by <a href="https://github.com/sooneeujuro">@sooneeujuro</a></sub>
+
+</div>
