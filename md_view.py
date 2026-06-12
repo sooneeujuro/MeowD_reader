@@ -175,6 +175,18 @@ SCRIPT = """
     img.onclick=function(){ if(ovi){ovi.src=img.currentSrc||img.src; ov.style.display='flex';} };
   });
   if(ov) ov.onclick=function(){ov.style.display='none';};
+  // In-page anchor links (TOC sidebar, [x](#section)). Because the page sets
+  // <base href> for relative images, a bare "#id" would otherwise resolve
+  // against the source folder and navigate to its directory listing. Intercept
+  // and scroll within the document instead.
+  document.querySelectorAll('a[href^="#"]').forEach(function(a){
+    a.addEventListener('click',function(e){
+      var raw=a.getAttribute('href').slice(1); if(!raw) return;
+      var id; try{id=decodeURIComponent(raw);}catch(_){id=raw;}
+      var el=document.getElementById(id)||document.getElementById(raw)||document.getElementsByName(id)[0];
+      if(el){e.preventDefault(); el.scrollIntoView({behavior:'smooth',block:'start'});}
+    });
+  });
 })();
 """
 
