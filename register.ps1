@@ -83,3 +83,5 @@ Write-Host "  (목록에 없으면 '이 PC에서 다른 앱 찾기' → $Exe 선
 Write-Host "  '항상 이 앱으로 열기' 체크하면 이후 더블클릭으로 바로 열립니다."
 Write-Host ""
 Write-Host "✎ 편집 버튼: 누르면 외부 편집기로 열림 (기본 메모장; editor.txt 로 변경)." -ForegroundColor Cyan
+Write-Host "   ※ 편집 버튼이 처음에 반응 없으면 브라우저를 완전히 껐다 켠 뒤 다시 누르세요." -ForegroundColor DarkGray
+Write-Host "      (브라우저가 새 mdedit: 프로토콜을 인식하려면 재시작 필요 — 뜨는 '열기?' 창은 허용)." -ForegroundColor DarkGray

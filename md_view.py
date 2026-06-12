@@ -51,7 +51,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
   <span class="tb-file">{title}</span>
   <span class="tb-spacer"></span>
   <button class="tb-btn" type="button" onclick="mdvToggleToc()" title="목차 보이기/숨기기">목차</button>
-  <a class="tb-btn" href="{edit_href}" title="외부 편집기에서 열기">✎ 편집</a>
+  <button class="tb-btn" type="button" id="mdv-edit-btn" data-edit="{edit_href}" onclick="mdvEdit()" title="외부 편집기에서 열기">✎ 편집</button>
   <button class="tb-btn" type="button" onclick="mdvToggleTheme()" title="라이트/다크 전환">◑ 테마</button>
 </div>
 <div class="layout">
@@ -141,6 +141,14 @@ img { max-width:100%; }
   .layout { display:block; padding:0; max-width:none; } .md-body { max-width:none; padding:0; }
   a { color:inherit; }
 }
+#mdv-toast { display:none; position:fixed; left:50%; bottom:22px; transform:translateX(-50%);
+  z-index:60; background:var(--btn-bg); color:var(--fg); border:1px solid var(--border);
+  border-radius:10px; padding:12px 16px; max-width:90vw; font-size:13px; line-height:1.55;
+  box-shadow:0 6px 22px rgba(0,0,0,.20); }
+#mdv-toast code { font-size:12px; background:var(--code-bg); padding:.1em .35em; border-radius:5px; }
+#mdv-toast button { margin-left:6px; font-size:12px; border:1px solid var(--border);
+  border-radius:5px; background:var(--btn-bg); color:var(--fg); padding:2px 9px; cursor:pointer; }
+#mdv-toast button:hover { background:var(--btn-hover); }
 """
 
 SCRIPT = """
@@ -155,6 +163,29 @@ SCRIPT = """
     try{localStorage.setItem('mdv-theme',next);}catch(e){}
   };
   window.mdvToggleToc=function(){document.body.classList.toggle('toc-hidden');};
+  window.mdvEdit=function(){
+    var btn=document.getElementById('mdv-edit-btn'); var url=btn.getAttribute('data-edit');
+    var blurred=false, on=function(){blurred=true;};
+    window.addEventListener('blur',on,{once:true});
+    try{ window.location.href=url; }catch(e){}
+    setTimeout(function(){
+      window.removeEventListener('blur',on);
+      if(!blurred){ var p; try{p=decodeURIComponent(url.slice(url.indexOf(':')+1));}catch(e){p=url;} mdvToast(p); }
+    },1400);
+  };
+  function mdvToast(path){
+    var t=document.getElementById('mdv-toast');
+    if(!t){ t=document.createElement('div'); t.id='mdv-toast'; document.body.appendChild(t); }
+    t.innerHTML='편집기가 안 열렸나요? 처음이라면 <b>브라우저를 완전히 닫았다 다시 열고</b> 눌러보세요 '+
+      '(뜨는 "열기?" 창은 허용).<br><span style="opacity:.85">파일: <code>'+
+      path.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</code></span>'+
+      '<button type="button" id="mdv-toast-copy">경로 복사</button>'+
+      '<button type="button" id="mdv-toast-x">닫기</button>';
+    t.style.display='block';
+    document.getElementById('mdv-toast-copy').onclick=function(){copy(path,this);};
+    document.getElementById('mdv-toast-x').onclick=function(){t.style.display='none';};
+    clearTimeout(window.__mdvT); window.__mdvT=setTimeout(function(){t.style.display='none';},9000);
+  }
   function copy(txt,btn){
     function done(){var o=btn.textContent;btn.textContent='복사됨';setTimeout(function(){btn.textContent=o;},1200);}
     if(navigator.clipboard&&navigator.clipboard.writeText){
