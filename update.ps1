@@ -28,6 +28,16 @@ foreach ($f in $files) {
 }
 try { [System.IO.Directory]::Delete($tmp, $true) } catch {}
 
+# MathJax 번들(2MB)은 거의 안 바뀌므로 로컬에 없을 때만 받음 → 수식 렌더 활성화
+$vendorLocal = Join-Path $here 'vendor\tex-svg.js'
+if (-not (Test-Path $vendorLocal)) {
+    New-Item -ItemType Directory -Force (Split-Path $vendorLocal) | Out-Null
+    try {
+        Invoke-WebRequest "$base/vendor/tex-svg.js" -OutFile $vendorLocal -UseBasicParsing
+        $changed += 'vendor/tex-svg.js (수식 렌더)'
+    } catch { Write-Host "  (vendor/tex-svg.js 받기 실패 — 수식 렌더 비활성)" -ForegroundColor DarkGray }
+}
+
 if ($changed.Count -eq 0) {
     Write-Host "✔ 이미 최신입니다." -ForegroundColor Green
     return
