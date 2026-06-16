@@ -62,6 +62,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 </div>
 <div id="mdv-zoom" class="zoom-overlay"><img alt=""></div>
 <script>{script}</script>
+{math}
 </body>
 </html>
 """
@@ -233,6 +234,60 @@ def _apply_task_lists(body: str) -> str:
     return _TASK_RE.sub(repl, body)
 
 
+# --- LaTeX math protection (so Markdown doesn't mangle $...$ before MathJax) -
+_MJ_FENCE = re.compile(r"```.*?```|~~~.*?~~~", re.S)
+_MJ_ICODE = re.compile(r"`[^`\n]+`")
+_MJ_DISPLAY = re.compile(r"\$\$(.+?)\$\$", re.S)
+_MJ_INLINE = re.compile(r"\$([^\$\n]+?)\$")
+_MJ_CODE_TOK = re.compile(r"MJSTASHC(\d+)END")
+_MJ_MATH_TOK = re.compile(r"MJSTASHM(\d+)END")
+
+
+def _protect_math(text: str) -> tuple[str, list[str]]:
+    """Lift math spans out of the text before Markdown runs.
+
+    Code (fenced + inline) is masked first so a ``$`` inside code is left
+    alone. ``$$..$$`` / ``$..$`` become opaque alphanumeric tokens that
+    survive Markdown unchanged; :func:`_restore_math` turns them back into
+    MathJax ``\\[..\\]`` / ``\\(..\\)`` after conversion.
+    """
+    codes: list[str] = []
+
+    def mask_code(m: "re.Match[str]") -> str:
+        codes.append(m.group(0))
+        return f"MJSTASHC{len(codes) - 1}END"
+
+    masked = _MJ_FENCE.sub(mask_code, text)
+    masked = _MJ_ICODE.sub(mask_code, masked)
+
+    maths: list[str] = []
+
+    def take_disp(m: "re.Match[str]") -> str:
+        maths.append("\\[" + m.group(1).strip() + "\\]")
+        return f"MJSTASHM{len(maths) - 1}END"
+
+    def take_inl(m: "re.Match[str]") -> str:
+        maths.append("\\(" + m.group(1).strip() + "\\)")
+        return f"MJSTASHM{len(maths) - 1}END"
+
+    masked = _MJ_DISPLAY.sub(take_disp, masked)
+    masked = _MJ_INLINE.sub(take_inl, masked)
+    masked = _MJ_CODE_TOK.sub(lambda m: codes[int(m.group(1))], masked)
+    return masked, maths
+
+
+def _restore_math(html_body: str, maths: list[str]) -> str:
+    if not maths:
+        return html_body
+
+    def put(m: "re.Match[str]") -> str:
+        latex = maths[int(m.group(1))]
+        # keep HTML valid; MathJax decodes the entities back when typesetting
+        return (latex.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+
+    return _MJ_MATH_TOK.sub(put, html_body)
+
+
 def _build_highlight_css() -> str:
     try:
         from pygments.formatters import HtmlFormatter
@@ -263,6 +318,23 @@ def _build_highlight_css() -> str:
 
 HIGHLIGHT_CSS = _build_highlight_css()
 
+# Bundled MathJax (tex-svg = single file, no external fonts, works offline via
+# file://). Loaded only when a document actually contains math.
+_MJ_VENDOR = Path(__file__).resolve().parent / "vendor" / "tex-svg.js"
+MATHJAX_URI = _MJ_VENDOR.as_uri() if _MJ_VENDOR.exists() else None
+_MJ_CONFIG = (
+    r"""<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],"""
+    r"""displayMath:[['$$','$$'],['\\[','\\]']]},"""
+    r"""options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']},"""
+    r"""svg:{fontCache:'local'}};</script>"""
+)
+
+
+def _math_block(math_present: bool) -> str:
+    if not (math_present and MATHJAX_URI):
+        return ""
+    return _MJ_CONFIG + f'\n<script src="{html.escape(MATHJAX_URI, quote=True)}"></script>'
+
 
 def render_html(md_text: str, title: str, base_href: str, edit_href: str) -> str:
     toc_html = ""
@@ -279,12 +351,16 @@ def render_html(md_text: str, title: str, base_href: str, edit_href: str) -> str
             md.registerExtensions(["codehilite"], {})
         except ImportError:
             pass
-        body = md.convert(md_text)
+        protected, math_list = _protect_math(md_text)
+        body = md.convert(protected)
         body = _apply_task_lists(body)
-        toc_html = getattr(md, "toc", "") or ""
+        body = _restore_math(body, math_list)
+        toc_html = _restore_math(getattr(md, "toc", "") or "", math_list)
         has_toc = bool(getattr(md, "toc_tokens", []))
+        math_block = _math_block(bool(math_list))
     else:
         body = "<pre>" + html.escape(md_text) + "</pre>"
+        math_block = ""
 
     return PAGE_TEMPLATE.format(
         base_href=html.escape(base_href, quote=True),
@@ -296,6 +372,7 @@ def render_html(md_text: str, title: str, base_href: str, edit_href: str) -> str
         body=body,
         body_class="" if has_toc else "no-toc",
         script=SCRIPT,
+        math=math_block,
     )
 
 

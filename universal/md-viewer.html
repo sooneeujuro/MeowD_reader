@@ -95,6 +95,8 @@ body.dragging .drop{border-color:var(--accent);color:var(--fg)}
   </main>
 </div>
 <script src="marked.min.js"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']},svg:{fontCache:'global'}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
 <script>
 const root=document.documentElement;
 try{const t=localStorage.getItem('meowd-theme');if(t)root.setAttribute('data-theme',t);}catch(e){}
@@ -115,10 +117,21 @@ function buildToc(){
     html+='<a class="'+lv.trim()+'" href="#'+h.id+'">'+h.textContent.replace(/</g,'&lt;')+'</a>';});
   toc.innerHTML=html;
 }
+function protectMath(t){var codes=[],maths=[];
+  t=t.replace(/```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]+`/g,function(m){codes.push(m);return 'MJSTASHC'+(codes.length-1)+'END';});
+  t=t.replace(/\$\$([\s\S]+?)\$\$/g,function(_,m){maths.push('\\['+m.trim()+'\\]');return 'MJSTASHM'+(maths.length-1)+'END';});
+  t=t.replace(/\$([^\$\n]+?)\$/g,function(_,m){maths.push('\\('+m.trim()+'\\)');return 'MJSTASHM'+(maths.length-1)+'END';});
+  t=t.replace(/MJSTASHC(\d+)END/g,function(_,i){return codes[+i];});
+  return {t:t,maths:maths};}
+function restoreMath(h,maths){if(!maths.length)return h;
+  return h.replace(/MJSTASHM(\d+)END/g,function(_,i){return maths[+i].replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');});}
 function render(text,name){
+  var b=document.getElementById('body');
   if(window.marked){marked.setOptions({gfm:true,breaks:false});
-    document.getElementById('body').innerHTML='<div class="drop" id="drop" style="display:none"></div>'+marked.parse(text);
-  }else{document.getElementById('body').textContent=text;}
+    var pm=protectMath(text); var out=restoreMath(marked.parse(pm.t),pm.maths);
+    b.innerHTML='<div class="drop" id="drop" style="display:none"></div>'+out;
+    if(pm.maths.length&&window.MathJax&&MathJax.typesetPromise){MathJax.typesetPromise([b]).catch(function(){});}
+  }else{b.textContent=text;}
   document.getElementById('fname').textContent=name||'';
   document.body.classList.add('loaded');buildToc();window.scrollTo(0,0);
 }
