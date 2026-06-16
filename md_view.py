@@ -241,6 +241,27 @@ _MJ_DISPLAY = re.compile(r"\$\$(.+?)\$\$", re.S)
 _MJ_INLINE = re.compile(r"\$([^\$\n]+?)\$")
 _MJ_CODE_TOK = re.compile(r"MJSTASHC(\d+)END")
 _MJ_MATH_TOK = re.compile(r"MJSTASHM(\d+)END")
+# Corpus markdown sometimes embeds cross-reference links / HTML inside math,
+# e.g. ``$1.38 \times [10](#block-5-0)^{-6}$`` (the ``#`` then crashes TeX with
+# "macro parameter character #"). Strip those, escape any stray #/%, and only
+# treat a span as math when it actually looks like math (so prose accidentally
+# wrapped in stray ``$`` is left alone instead of italicised).
+_MJ_MDLINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
+_MJ_HTMLTAG = re.compile(r"<[^>]+>")
+_MJ_HASH = re.compile(r"(?<!\\)#")
+_MJ_PCT = re.compile(r"(?<!\\)%")
+
+
+def _clean_math_links(s: str) -> str:
+    return _MJ_HTMLTAG.sub("", _MJ_MDLINK.sub(r"\1", s))
+
+
+def _looks_math(s: str) -> bool:
+    return "\\" in s or "^" in s or "_" in s
+
+
+def _finalize_math(s: str) -> str:
+    return _MJ_PCT.sub(r"\\%", _MJ_HASH.sub(r"\\#", s)).strip()
 
 
 def _protect_math(text: str) -> tuple[str, list[str]]:
@@ -263,11 +284,17 @@ def _protect_math(text: str) -> tuple[str, list[str]]:
     maths: list[str] = []
 
     def take_disp(m: "re.Match[str]") -> str:
-        maths.append("\\[" + m.group(1).strip() + "\\]")
+        inner = _clean_math_links(m.group(1))
+        if not _looks_math(inner):
+            return m.group(0)
+        maths.append("\\[" + _finalize_math(inner) + "\\]")
         return f"MJSTASHM{len(maths) - 1}END"
 
     def take_inl(m: "re.Match[str]") -> str:
-        maths.append("\\(" + m.group(1).strip() + "\\)")
+        inner = _clean_math_links(m.group(1))
+        if not _looks_math(inner):
+            return m.group(0)
+        maths.append("\\(" + _finalize_math(inner) + "\\)")
         return f"MJSTASHM{len(maths) - 1}END"
 
     masked = _MJ_DISPLAY.sub(take_disp, masked)
